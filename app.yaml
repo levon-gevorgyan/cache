@@ -1,0 +1,14 @@
+runtime: custom
+env: flex
+service: memcache
+manual_scaling:
+  instances: 2
+env_variables:
+  CACHE_PORT : 7001
+  CMD_PORT: 6001
+network:
+  instance_tag: memcache
+  name: default
+  forwarded_ports:
+    - 6001/tcp
+    - 7001/tcp

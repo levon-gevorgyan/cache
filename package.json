@@ -1,0 +1,28 @@
+{
+  "name": "@mamble/cache",
+  "version": "0.0.1",
+  "description": "Cluster",
+  "license": "UNLICENSED",
+  "author": "Test",
+  "contributors": [
+    "Test"
+  ],
+
+  "scripts": {
+    "elr": "elr",
+    "postinstall" : "elc -p ./src",
+    "start": "elr cluster/app",
+    "compile": "elc -p ./src",
+    "watch": "elc -w -p ./src"
+  },
+  "engines" : {
+    "node" : ">=6.0.0"
+  },
+  "dependencies": {
+    "@ecmal/gapi": "latest",
+    "@ecmal/node": "latest",
+    "@ecmal/runtime": "latest",
+    "@ecmal/elp": "latest",
+    "googleapis": "latest"
+  }
+}

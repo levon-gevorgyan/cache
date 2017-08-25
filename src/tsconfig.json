@@ -1,0 +1,20 @@
+{
+  "name": "cluster",
+  "version":"0.0.1",
+  "dependencies": {
+    "@ecmal/http": "0.0.1"
+  },
+  "compilerOptions": {
+    "module": "system",
+    "target": "es5",
+    "declaration": true,
+    "sourceMap": true,
+    "outDir": "../node_modules",
+    "noEmitHelpers": true,
+    "importHelpers": true,
+    "stripInternal": true,
+    "baseUrl": "../node_modules",
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true
+  }
+}
