@@ -95,7 +95,7 @@ export class App{
 
 
                 data[this.instance_key][this.server.id] = {
-                    host : this.network.ext_ip,
+                    host : this.network.ip,
                     port : 7001
                 };
 
