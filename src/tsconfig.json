@@ -1,5 +1,5 @@
 {
-  "name": "cluster",
+  "name": "@mamble/cache",
   "version":"0.0.1",
   "dependencies": {
     "@ecmal/http": "0.0.1"

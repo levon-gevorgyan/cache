@@ -1,17 +1,17 @@
 {
   "name": "@mamble/cache",
   "version": "0.0.1",
-  "description": "Cluster",
+  "description": "cache",
   "license": "UNLICENSED",
-  "author": "Test",
-  "contributors": [
-    "Test"
-  ],
-
+  "author": "Levon Gevorgyan",
+  "repository" :
+  { "type" : "git",
+    "url" : "https://github.com/levon-gevorgyan/cache.git"
+  },
   "scripts": {
     "elr": "elr",
     "postinstall" : "elc -p ./src",
-    "start": "elr cluster/app",
+    "start": "elr @mamble/cache/app",
     "compile": "elc -p ./src",
     "watch": "elc -w -p ./src"
   },
@@ -19,10 +19,10 @@
     "node" : ">=6.0.0"
   },
   "dependencies": {
-    "@ecmal/gapi": "latest",
-    "@ecmal/node": "latest",
-    "@ecmal/runtime": "latest",
-    "@ecmal/elp": "latest",
+    "@ecmal/gapi": "0.0.4",
+    "@ecmal/node": "0.0.4",
+    "@ecmal/runtime": "0.0.4",
+    "@ecmal/elp": "2.5.2-elp",
     "googleapis": "latest"
   }
 }
