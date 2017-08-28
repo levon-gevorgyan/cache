@@ -1,71 +1,82 @@
-import {cached, signal, Signal} from "@ecmal/runtime/decorators";
-import {GoogleApi, GoogleComputeApi} from "../google/gapi";
+import {cached} from "@ecmal/runtime/decorators";
+import {GoogleApis} from "../google/apis";
 import app from "../app"
+import {GoogleComputeApi} from "../google/compute-api";
+import {GoogleAppEngineApi} from "../google/app-engine-api";
 
 
 export class GoogleService {
 
-    static toItems(items){
-        return (items || []).reduce((p,c)=>{
-            p[c.key] = c.value;
-            return p;
-        },{})
+    @cached
+    public get network_config(){
+        return Object.create(null);
     }
-
-    public metadata:any;
 
     @cached
     private get app(){
         return app;
     }
-    @cached
-    private get instance_key(){
-        return app.instance_key;
-    }
+
     @cached
     public get gapi(){
-        return new GoogleApi();
+        return new GoogleApis();
     }
     @cached
     public get compute(){
         return new GoogleComputeApi(this.gapi);
     }
-
-    @signal
-    public onMetadataUpdate:Signal<Function>;
-
+    @cached
+    public get app_engine(){
+        return new GoogleAppEngineApi(this.gapi);
+    }
 
     public async init(){
         await this.gapi.authorize();
     }
 
-    public startPolling(){
+    public async start(){
+        await this.init();
+        this.startPolling();
+    }
+
+    public async startPolling(){
         let doPoll = (r?)=>{
             //console.info('POLLING',JSON.stringify(d))
             //console.info('POLLING',JSON.stringify(r,null,2))
-            if(!this.metadata){
-                this.metadata = {};
-            }
             if(r){
-                if(this.metadata.fingerprint != r.fingerprint){
-                    let old_instances = JSON.parse(GoogleService.toItems(this.metadata.items)[this.instance_key] || "{}");
-                    let new_instances = JSON.parse(GoogleService.toItems(r.items)[this.instance_key] || "{}");
-                    let updates = Object.keys(new_instances).filter(k=>!old_instances[k]).reduce((p,c)=>{
-                        p[c] =  new_instances[c];
-                        return p;
-                    },{});
-                    //console.info('UPDATE',updates,old_instances,new_instances)
-                    if(Object.keys(updates).length){
-                        console.info('CONFIG UPDATED',updates)
-                        this.onMetadataUpdate(updates)
+                let config = r.filter(i=>{
+                    let add = !this.network_config[i.host];
+                    if(add){
+                        this.network_config[i.host] = i;
                     }
-                    this.metadata = r;
+                    return add;
+                });
+                if(config.length){
+                    this.app.onNetworkConfigUpdate(config);
                 }
             }
             setTimeout(()=>{
                 this.startPolling();
             },5000)
         };
-        this.compute.getProjectMetadata().then(r=>doPoll(r),e=>doPoll())
+        await this.updateNetworkConfig().then(r=>doPoll(r),e=>doPoll())
+    }
+
+    public updateNetworkConfig(){
+        return this.app_engine.listInstances().then((res:any)=>{
+            let instances = res && res.instances;
+            if(instances){
+                return instances.map(i=>{
+                    return {
+                        host : i.id,
+                        port : this.app.process.env.CACHE_PORT
+                    }
+                });
+            }
+        }).catch(e=>{
+            console.error(e);
+            return Promise.reject(null);
+        })
+
     }
 }

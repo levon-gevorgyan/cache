@@ -1,51 +1,17 @@
-import {cached} from "@ecmal/runtime/decorators";
+import {GoogleApis} from "./apis";
+import {GoogleApi} from "./api";
 
-export class GoogleApi{
+declare var process;
 
-    @cached
-    public get google_apis(){
-        return require('googleapis');
+export class GoogleComputeApi extends GoogleApi{
+
+    constructor(api:GoogleApis){
+        super(api);
     }
 
-    public auth_client:any;
-
-
-    public authorize() {
-        return new Promise((accept,reject)=>{
-            this.google_apis.auth.getApplicationDefault((err, authClient)=> {
-                if (err) {
-                    console.log('authentication failed: ', err);
-                    reject(err)
-                }
-                if (authClient.createScopedRequired && authClient.createScopedRequired()) {
-                    let scopes = ['https://www.googleapis.com/auth/cloud-platform'];
-                    authClient = authClient.createScoped(scopes);
-                }
-                accept(this.auth_client = authClient);
-            });
-        })
-    }
-}
-
-export class GoogleComputeApi{
-    public api:GoogleApi;
-
-    @cached
-    public get compute(){
-        return this.api.google_apis.compute('v1');
-    }
-
-    public get auth_client(){
-        return this.api.auth_client;
-    }
-
-    constructor(api:GoogleApi){
-        this.api = api;
-    }
-
-    private request(data={}){
+    protected request(data={}){
         return Object.assign({
-            project : 'mamble-poc',
+            project : process.env.GCLOUD_PROJECT,
             auth    : this.auth_client
         },data)
     }

@@ -1,8 +1,7 @@
 import {CmdServer} from "./cmd-server";
 import {MemCacheServer} from "./memcache";
-import {cached} from "@ecmal/runtime/decorators";
+import {cached, signal, Signal} from "@ecmal/runtime/decorators";
 import {GoogleService} from "./services/google";
-import {GoogleComputeApi} from "./google/gapi";
 import {MetadataService} from "./services/metadata";
 
 
@@ -10,38 +9,38 @@ const http = require('http');
 const url = require('url');
 declare var process;
 
-export const SERVER = {
-    host : '0.0.0.0'
-};
-
 
 export class App{
 
-    public network:any;
+    public servers:any;
 
     public server:MemCacheServer;
 
     public cmd:CmdServer;
+
+    @signal
+    public onNetworkConfigUpdate:Signal<Function>;
+
+    @cached
+    public get process(){
+        return process;
+    }
 
     @cached
     public get env(){
         return process.env.NODE_ENV || "local";
     }
     @cached
+    public get gae_project(){
+        return process.env.GCLOUD_PROJECT;
+    }
+    @cached
+    public get gae_service(){
+        return process.env.GAE_SERVICE;
+    }
+    @cached
     public get is_prod(){
         return this.env == "production";
-    }
-    @cached
-    public get is_gcp(){
-        return !!process.env.GAE_VERSION
-    }
-    @cached
-    public get instance_key(){
-        let key = "instances";
-        if(!this.is_prod){
-           key = `${this.env}_${key}`;
-        }
-        return key;
     }
     @cached
     public get google(){
@@ -51,70 +50,46 @@ export class App{
     public get metadata(){
         return new MetadataService()
     }
-    @cached
-    public get compute():GoogleComputeApi{
-        return this.google.compute
-    }
 
     constructor(){
-        this.onMetadata = this.onMetadata.bind(this);
-        this.google.onMetadataUpdate.attach(this.onMetadata);
+        this.servers = Object.create(null);
     }
 
-    public onMetadata(instances){
-        console.info("METADATA",instances)
-        this.server.connectClients(Object.keys(instances).reduce((p,c)=>{
-            let instance = instances[c];
-            if(!this.server.clients_config[c]){
-                p[c] = instance
+    public async initLocal(){
+        this.servers = process.env.SERVER_PORTS.split(',').map(p=>{
+            return {
+                host : 'localhost',
+                port : p
             }
-            return p;
-        },{}));
-        this.server.clients_config = Object.assign(this.server.clients_config,instances);
+        });
+        this.server.connectClients(this.servers);
+    }
+
+    public async initProd(){
+        this.onNetworkConfigUpdate.attach((config)=>{
+            console.info('CONFIG_UPDATE',config)
+            this.server.connectClients(config);
+            Object.assign(this.servers,config);
+        })
     }
 
     public async initialize() {
-        console.info('Initalizing')
+        console.info(`Initializing on ${this.env}`);
         this.server = new MemCacheServer({
-            host : SERVER.host,
+            host : '0.0.0.0',
             port : process.env.CACHE_PORT
         });
         this.server.listen();
-        await this.google.init();
-        let data = {};
-        data[this.instance_key] = {};
-        if(this.is_gcp){
-            await this.metadata.init();
-            console.info('NETWORK',this.metadata.network_config)
-            if(this.metadata.network_config){
-                this.network = {
-                    ip      : this.metadata.network_config.ip,
-                    ext_ip  : this.metadata.network_config.accessConfigs[0].externalIp
-                };
-                console.info('NETWORK2',this.network)
-
-
-                data[this.instance_key][this.server.id] = {
-                    host : this.network.ip,
-                    port : 7001
-                };
-
-
-            }
-        }else {
-            data[this.instance_key][this.server.id] = {
-                host : '127.0.0.1',
-                port : process.env.CACHE_PORT
-            };
-        }
-        console.info('DATA',data)
-        await this.compute.updateMetadata(data);
-        console.info('Start Polling Metadata')
-        this.google.startPolling();
         this.cmd = new CmdServer({
-            host : SERVER.host,
+            host : '0.0.0.0',
             port : process.env.CMD_PORT
         },this.server);
+        if(this.is_prod){
+            await this.initProd();
+        }else {
+            await this.initLocal();
+        }
+        await this.google.start();
         this.startHttpServer();
     }
 
